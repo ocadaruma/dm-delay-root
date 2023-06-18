@@ -1,0 +1,45 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    root_device: /dev/vda1
+  tasks:
+  - apt:
+      name: build-essential
+      state: present
+  - tempfile:
+      state: directory
+      suffix: .ddi-build
+    register: ddi_build_dir
+  - git:
+      repo: https://github.com/ocadaruma/ddi.git
+      version: kernel-5.9
+      dest: "{{ ddi_build_dir.path }}/ddi"
+    when: ddi_build_dir.path is defined
+  - make:
+      chdir: "{{ ddi_build_dir.path }}/ddi"
+      target: all
+    when: ddi_build_dir.path is defined
+  - make:
+      chdir: "{{ ddi_build_dir.path }}/ddi"
+      target: install
+    when: ddi_build_dir.path is defined
+  - shell: depmod -a
+  - template:
+      src: hooks/dm_ddi
+      dest: /etc/initramfs-tools/hooks/dm_ddi
+      owner: root
+      group: root
+      mode: 0755
+  - template:
+      src: scripts/dm_ddi
+      dest: /etc/initramfs-tools/scripts/init-premount/dm_ddi
+      owner: root
+      group: root
+      mode: 0755
+  - shell: update-initramfs -c -k all
+  - lineinfile:
+      path: /etc/default/grub
+      regexp: '^GRUB_CMDLINE_LINUX='
+      line: 'GRUB_CMDLINE_LINUX="root=/dev/mapper/ddi_root"'
+  - shell: update-grub

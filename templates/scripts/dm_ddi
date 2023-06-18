@@ -1,0 +1,16 @@
+#!/bin/sh
+PREREQ=""
+prereqs()
+{
+    echo "$PREREQ"
+}
+
+case "$1" in
+prereqs)
+    prereqs
+    exit 0
+esac
+
+. /scripts/functions
+# Begin real processing below this line
+/sbin/dmsetup create ddi_root --table "0 $(/sbin/blockdev --getsz {{ root_device }}) ddi {{ root_device }} 0 0 {{ root_device }} 0 0"
